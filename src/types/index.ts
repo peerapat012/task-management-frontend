@@ -1,17 +1,37 @@
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'completed';
-  priority: Priority;
-  categoryId: string | null;
-  dueDate: string | null;
-  reminder: string | null;
-  createdAt: string;
-  updatedAt: string;
+export type TaskStatus = 'pending' | 'in_progress' | 'completed';
+export type Priority = 'high' | 'medium' | 'low';
+export type UserRole = 'user' | 'admin';
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  password: string;
+  token: string;
+  role: UserRole;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export type Priority = 'high' | 'medium' | 'low';
+export interface Task {
+  id: number;
+  userId: number;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: Priority;
+  isDeleted: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface NewTask {
+  title: string;
+  description?: string;
+  status?: TaskStatus;
+  priority?: Priority;
+  userId: number;
+}
 
 export interface Category {
   id: string;
@@ -20,16 +40,9 @@ export interface Category {
   createdAt: string;
 }
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string | null;
-}
-
 export type FilterState = {
-  status: 'all' | 'pending' | 'completed';
-  priority: 'all' | 'high' | 'medium' | 'low';
+  status: 'all' | TaskStatus;
+  priority: 'all' | Priority;
   categoryId: 'all' | string;
   search: string;
 };
