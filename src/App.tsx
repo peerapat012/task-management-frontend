@@ -7,6 +7,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LoginPage } from '@/pages/Login';
 import { RegisterPage } from '@/pages/Register';
+import { LandingPage } from '@/pages/Landing';
 import { DashboardPage } from '@/pages/Dashboard';
 import { TasksPage } from '@/pages/Tasks';
 import { CategoriesPage } from '@/pages/Categories';
@@ -18,6 +19,7 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             
@@ -38,7 +40,7 @@ function App() {
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
             
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

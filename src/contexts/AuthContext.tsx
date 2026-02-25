@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
@@ -22,23 +22,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { showToast } = useToast();
 
   useEffect(() => {
-    const stored = localStorage.getItem(USER_KEY);
+    const stored = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
     
     if (stored) {
       try {
         setUser(JSON.parse(stored));
       } catch {
         localStorage.removeItem(USER_KEY);
+        sessionStorage.removeItem(USER_KEY);
       }
     }
     setIsLoading(false);
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, password: string, rememberMe = false): Promise<boolean> => {
     try {
       const { user } = await authApi.login(email, password);
       setUser(user);
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      if (rememberMe) {
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+      } else {
+        sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+      }
       showToast('Login successful', 'success');
       return true;
     } catch (error: any) {
@@ -64,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     authApi.logout();
     localStorage.removeItem(USER_KEY);
-    localStorage.removeItem('token');
+    sessionStorage.removeItem(USER_KEY);
     showToast('Logged out successfully', 'info');
   }, [showToast]);
 

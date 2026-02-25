@@ -24,6 +24,7 @@ export function LoginPage() {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const from = (location.state as { from?: Location })?.from?.pathname || '/dashboard';
 
@@ -39,7 +40,7 @@ export function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setIsSubmitting(true);
     try {
-      const success = await login(data.email, data.password);
+      const success = await login(data.email, data.password, rememberMe);
       if (success) {
         navigate(from, { replace: true });
       } else {
@@ -97,7 +98,11 @@ export function LoginPage() {
               )}
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox id="remember" />
+              <Checkbox 
+                id="remember" 
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+              />
               <Label htmlFor="remember" className="text-sm font-normal">Remember me</Label>
             </div>
           </CardContent>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Bell, Menu, LogOut, Settings, User as UserIcon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, Bell, Menu, LogOut, Settings, User as UserIcon, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -32,7 +32,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   const getInitials = (name: string) => {
@@ -54,6 +54,13 @@ export function Header({ onMenuClick }: HeaderProps) {
       >
         <Menu className="h-5 w-5" />
       </Button>
+
+      <Link to="/dashboard" className="flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6366F1]">
+          <Check className="h-4 w-4 text-white" />
+        </div>
+        <span className="text-lg font-bold text-slate-900">TaskFlow</span>
+      </Link>
 
       <div className="flex flex-1 items-center">
         <form onSubmit={handleSearch} className="relative w-full max-w-md">
