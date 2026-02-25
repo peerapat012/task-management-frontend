@@ -6,11 +6,9 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  password: string;
-  token: string;
   role: UserRole;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Task {
@@ -21,8 +19,8 @@ export interface Task {
   status: TaskStatus;
   priority: Priority;
   isDeleted: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface NewTask {

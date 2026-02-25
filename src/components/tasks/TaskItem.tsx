@@ -1,5 +1,4 @@
-import { format, isPast, isToday } from 'date-fns';
-import { MoreVertical, Pencil, Trash2, Calendar } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -14,11 +13,9 @@ import { cn } from '@/lib/utils';
 
 interface TaskItemProps {
   task: Task;
-  categoryName?: string;
-  categoryColor?: string;
-  onToggle: (id: string) => void;
+  onToggle: (id: number) => void;
   onEdit: (task: Task) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: number) => void;
 }
 
 const priorityConfig: Record<Priority, { label: string; className: string }> = {
@@ -27,10 +24,13 @@ const priorityConfig: Record<Priority, { label: string; className: string }> = {
   low: { label: 'Low', className: 'bg-blue-100 text-blue-700' },
 };
 
-export function TaskItem({ task, categoryName, categoryColor, onToggle, onEdit, onDelete }: TaskItemProps) {
-  const isOverdue = task.dueDate && task.status === 'pending' && isPast(new Date(task.dueDate));
-  const isDueToday = task.dueDate && isToday(new Date(task.dueDate));
+const statusConfig: Record<string, { label: string; className: string }> = {
+  pending: { label: 'Pending', className: 'bg-slate-100 text-slate-700' },
+  in_progress: { label: 'In Progress', className: 'bg-blue-100 text-blue-700' },
+  completed: { label: 'Completed', className: 'bg-green-100 text-green-700' },
+};
 
+export function TaskItem({ task, onToggle, onEdit, onDelete }: TaskItemProps) {
   return (
     <div
       className={cn(
@@ -82,30 +82,9 @@ export function TaskItem({ task, categoryName, categoryColor, onToggle, onEdit, 
           <Badge className={cn('text-xs', priorityConfig[task.priority].className)}>
             {priorityConfig[task.priority].label}
           </Badge>
-
-          {categoryName && (
-            <Badge variant="secondary" className="text-xs">
-              {categoryColor && (
-                <span
-                  className="mr-1 h-2 w-2 rounded-full"
-                  style={{ backgroundColor: categoryColor }}
-                />
-              )}
-              {categoryName}
-            </Badge>
-          )}
-
-          {task.dueDate && (
-            <span
-              className={cn(
-                'flex items-center gap-1 text-xs',
-                isOverdue ? 'text-red-500' : isDueToday ? 'text-amber-500' : 'text-slate-500'
-              )}
-            >
-              <Calendar className="h-3 w-3" />
-              {format(new Date(task.dueDate), 'MMM d, yyyy')}
-            </span>
-          )}
+          <Badge className={cn('text-xs', statusConfig[task.status].className)}>
+            {statusConfig[task.status].label}
+          </Badge>
         </div>
       </div>
     </div>

@@ -1,20 +1,23 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Task, FilterState } from '@/types';
+import { Task, FilterState, NewTask } from '@/types';
+import { taskApi } from '@/lib/api';
+import { useAuth } from './AuthContext';
+import { useToast } from './ToastContext';
 
 interface TaskContextType {
   tasks: Task[];
   filters: FilterState;
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  toggleTaskStatus: (id: string) => void;
+  isLoading: boolean;
+  addTask: (task: Omit<NewTask, 'userId'>) => Promise<void>;
+  updateTask: (id: number, updates: Partial<NewTask>) => Promise<void>;
+  deleteTask: (id: number) => Promise<void>;
+  toggleTaskStatus: (id: number) => Promise<void>;
   setFilters: (filters: Partial<FilterState>) => void;
   filteredTasks: Task[];
+  refetch: () => Promise<void>;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
-
-const STORAGE_KEY = 'taskflow_tasks';
 
 const defaultFilters: FilterState = {
   status: 'all',
@@ -26,88 +29,80 @@ const defaultFilters: FilterState = {
 export function TaskProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filters, setFiltersState] = useState<FilterState>(defaultFilters);
+  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
+  const { showToast } = useToast();
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setTasks(JSON.parse(stored));
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
-      }
-    } else {
-      const mockTasks: Task[] = [
-        {
-          id: '1',
-          title: 'Welcome to TaskFlow',
-          description: 'This is your first task. You can edit or delete it.',
-          status: 'pending',
-          priority: 'medium',
-          categoryId: null,
-          dueDate: new Date(Date.now() + 86400000 * 2).toISOString(),
-          reminder: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          title: 'Complete project setup',
-          description: 'Set up the development environment',
-          status: 'completed',
-          priority: 'high',
-          categoryId: null,
-          dueDate: new Date(Date.now() - 86400000).toISOString(),
-          reminder: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ];
-      setTasks(mockTasks);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(mockTasks));
+  const fetchTasks = useCallback(async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await taskApi.getAll({ limit: 100 });
+      setTasks(response.data);
+    } catch (error: any) {
+      showToast(error.message || 'Failed to fetch tasks', 'error');
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [user, showToast]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-  }, [tasks]);
+    fetchTasks();
+  }, [fetchTasks]);
 
-  const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newTask: Task = {
-      ...task,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setTasks((prev) => [...prev, newTask]);
-  }, []);
+  const addTask = useCallback(async (task: Omit<NewTask, 'userId'>) => {
+    if (!user) return;
+    
+    try {
+      const newTask = await taskApi.create({ ...task, userId: user.id });
+      setTasks((prev) => [...prev, newTask]);
+      showToast('Task created successfully', 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to create task', 'error');
+      throw error;
+    }
+  }, [user, showToast]);
 
-  const updateTask = useCallback((id: string, updates: Partial<Task>) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? { ...task, ...updates, updatedAt: new Date().toISOString() }
-          : task
-      )
-    );
-  }, []);
+  const updateTask = useCallback(async (id: number, updates: Partial<NewTask>) => {
+    try {
+      const updatedTask = await taskApi.update(id, updates);
+      setTasks((prev) =>
+        prev.map((task) => (task.id === id ? updatedTask : task))
+      );
+      showToast('Task updated successfully', 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to update task', 'error');
+      throw error;
+    }
+  }, [showToast]);
 
-  const deleteTask = useCallback((id: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
-  }, []);
+  const deleteTask = useCallback(async (id: number) => {
+    try {
+      await taskApi.delete(id);
+      setTasks((prev) => prev.filter((task) => task.id !== id));
+      showToast('Task deleted successfully', 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to delete task', 'error');
+      throw error;
+    }
+  }, [showToast]);
 
-  const toggleTaskStatus = useCallback((id: string) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? {
-              ...task,
-              status: task.status === 'completed' ? 'pending' : 'completed',
-              updatedAt: new Date().toISOString(),
-            }
-          : task
-      )
-    );
-  }, []);
+  const toggleTaskStatus = useCallback(async (id: number) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+    try {
+      const updatedTask = await taskApi.update(id, { status: newStatus });
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? updatedTask : t))
+      );
+    } catch (error: any) {
+      showToast(error.message || 'Failed to update task status', 'error');
+      throw error;
+    }
+  }, [tasks, showToast]);
 
   const setFilters = useCallback((newFilters: Partial<FilterState>) => {
     setFiltersState((prev) => ({ ...prev, ...newFilters }));
@@ -116,7 +111,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const filteredTasks = tasks.filter((task) => {
     if (filters.status !== 'all' && task.status !== filters.status) return false;
     if (filters.priority !== 'all' && task.priority !== filters.priority) return false;
-    if (filters.categoryId !== 'all' && task.categoryId !== filters.categoryId) return false;
     if (filters.search && !task.title.toLowerCase().includes(filters.search.toLowerCase())) return false;
     return true;
   });
@@ -126,12 +120,14 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       value={{
         tasks,
         filters,
+        isLoading,
         addTask,
         updateTask,
         deleteTask,
         toggleTaskStatus,
         setFilters,
         filteredTasks,
+        refetch: fetchTasks,
       }}
     >
       {children}

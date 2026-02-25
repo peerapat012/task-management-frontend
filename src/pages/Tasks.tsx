@@ -5,7 +5,7 @@ import { TaskFilters } from '@/components/tasks/TaskFilters';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskModal } from '@/components/tasks/TaskModal';
 import { useTasks } from '@/contexts/TaskContext';
-import { Task } from '@/types';
+import { Task, NewTask } from '@/types';
 
 export function TasksPage() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -22,17 +22,23 @@ export function TasksPage() {
     setModalOpen(true);
   };
 
-  const handleSaveTask = (data: any) => {
-    if (editingTask) {
-      updateTask(editingTask.id, data);
-    } else {
-      addTask({
-        ...data,
-        status: 'pending',
-      });
+  const handleSaveTask = async (data: { title: string; description?: string; priority: 'high' | 'medium' | 'low'; status?: 'pending' | 'in_progress' | 'completed' }) => {
+    try {
+      if (editingTask) {
+        await updateTask(editingTask.id, data);
+      } else {
+        await addTask({
+          title: data.title,
+          description: data.description,
+          priority: data.priority,
+          status: data.status || 'pending',
+        });
+      }
+      setModalOpen(false);
+      setEditingTask(null);
+    } catch (error) {
+      console.error('Failed to save task:', error);
     }
-    setModalOpen(false);
-    setEditingTask(null);
   };
 
   return (

@@ -9,11 +9,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useTasks } from '@/contexts/TaskContext';
-import { useCategories } from '@/contexts/CategoryContext';
+import { TaskStatus } from '@/types';
 
 export function TaskFilters() {
   const { filters, setFilters } = useTasks();
-  const { categories } = useCategories();
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -40,7 +39,7 @@ export function TaskFilters() {
 
         <Select
           value={filters.status}
-          onValueChange={(value: 'all' | 'pending' | 'completed') =>
+          onValueChange={(value: 'all' | TaskStatus) =>
             setFilters({ status: value })
           }
         >
@@ -50,6 +49,7 @@ export function TaskFilters() {
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
         </Select>
@@ -68,23 +68,6 @@ export function TaskFilters() {
             <SelectItem value="high">High</SelectItem>
             <SelectItem value="medium">Medium</SelectItem>
             <SelectItem value="low">Low</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={filters.categoryId}
-          onValueChange={(value: string) => setFilters({ categoryId: value })}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category.id} value={category.id}>
-                {category.name}
-              </SelectItem>
-            ))}
           </SelectContent>
         </Select>
       </div>

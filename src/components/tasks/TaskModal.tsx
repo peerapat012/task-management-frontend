@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { format } from 'date-fns';
-import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,28 +14,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Task, Priority } from '@/types';
+import { Task, Priority, TaskStatus } from '@/types';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   priority: z.enum(['high', 'medium', 'low']),
-  categoryId: z.string().nullable(),
-  dueDate: z.string().nullable(),
-  reminder: z.string().nullable(),
+  status: z.enum(['pending', 'in_progress', 'completed']).optional(),
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
@@ -46,7 +30,7 @@ interface TaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task?: Task | null;
-  onSave: (data: any) => void;
+  onSave: (data: TaskFormData) => void;
 }
 
 const priorityConfig: Record<Priority, { label: string; color: string; selectedColor: string }> = {
@@ -57,33 +41,24 @@ const priorityConfig: Record<Priority, { label: string; color: string; selectedC
 
 const priorities: Priority[] = ['high', 'medium', 'low'];
 
-export function TaskModal({ open, onOpenChange, task, onSave }: TaskModalProps) {
-  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
-  const [selectedPriority, setSelectedPriority] = useState<Priority>('medium');
-  const [selectedCategory, setSelectedCategory] = useState<string>('__clear__');
-  const [categories, setCategories] = useState<Array<{id: string, name: string, color: string}>>([]);
+const statusOptions: { value: TaskStatus; label: string }[] = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'completed', label: 'Completed' },
+];
 
-  useEffect(() => {
-    const stored = localStorage.getItem('taskflow_categories');
-    if (stored) {
-      try {
-        setCategories(JSON.parse(stored));
-      } catch (e) {
-        setCategories([]);
-      }
-    }
-  }, [open]);
+export function TaskModal({ open, onOpenChange, task, onSave }: TaskModalProps) {
+  const [selectedPriority, setSelectedPriority] = useState<Priority>('medium');
+  const [selectedStatus, setSelectedStatus] = useState<TaskStatus>('pending');
 
   useEffect(() => {
     if (open) {
       if (task) {
         setSelectedPriority(task.priority);
-        setDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
-        setSelectedCategory(task.categoryId || '');
+        setSelectedStatus(task.status);
       } else {
         setSelectedPriority('medium');
-        setDueDate(undefined);
-        setSelectedCategory('__clear__');
+        setSelectedStatus('pending');
       }
     }
   }, [open, task]);
@@ -100,17 +75,14 @@ export function TaskModal({ open, onOpenChange, task, onSave }: TaskModalProps) 
       title: '',
       description: '',
       priority: 'medium',
-      categoryId: null,
-      dueDate: null,
-      reminder: null,
+      status: 'pending',
     },
   });
 
   const onSubmit = (data: TaskFormData) => {
     onSave({ 
-      ...data, 
-      dueDate: dueDate?.toISOString() || null,
-      categoryId: selectedCategory || null 
+      ...data,
+      status: selectedStatus,
     });
     reset();
     onOpenChange(false);
@@ -119,9 +91,8 @@ export function TaskModal({ open, onOpenChange, task, onSave }: TaskModalProps) 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       reset();
-      setDueDate(undefined);
       setSelectedPriority('medium');
-      setSelectedCategory('');
+      setSelectedStatus('pending');
     }
     onOpenChange(isOpen);
   };
@@ -184,62 +155,28 @@ export function TaskModal({ open, onOpenChange, task, onSave }: TaskModalProps) 
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label>Category</Label>
-              <Select
-                value={selectedCategory || '__clear__'}
-                onValueChange={(value) => {
-                  const finalValue = value === '__clear__' ? '' : value;
-                  setSelectedCategory(finalValue);
-                  setValue('categoryId', finalValue || null);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__clear__">No category</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: cat.color }}
-                        />
-                        {cat.name}
-                      </div>
-                    </SelectItem>
+            {task && (
+              <div className="grid gap-2">
+                <Label>Status</Label>
+                <div className="flex gap-2">
+                  {statusOptions.map((s) => (
+                    <button
+                      key={s.value}
+                      type="button"
+                      onClick={() => setSelectedStatus(s.value)}
+                      className={cn(
+                        'flex flex-1 items-center justify-center rounded-lg border px-3 py-2 text-sm transition-colors',
+                        selectedStatus === s.value
+                          ? 'border-green-500 bg-green-50 text-green-700'
+                          : 'border-slate-200 hover:bg-slate-50'
+                      )}
+                    >
+                      {s.label}
+                    </button>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Due Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !dueDate && 'text-slate-500'
-                    )}
-                  >
-                    {dueDate ? format(dueDate, 'PPP') : 'Select date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dueDate}
-                    onSelect={(date) => {
-                      setDueDate(date);
-                      setValue('dueDate', date?.toISOString() || null);
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
